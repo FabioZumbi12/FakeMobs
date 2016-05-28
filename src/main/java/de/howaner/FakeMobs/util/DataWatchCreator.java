@@ -1,143 +1,166 @@
 package de.howaner.FakeMobs.util;
 
-import com.comphenix.protocol.wrappers.WrappedDataWatcher;
+import java.util.UUID;
+
 import org.bukkit.entity.EntityType;
+
+import com.comphenix.protocol.wrappers.WrappedDataWatcher;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher.Registry;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher.Serializer;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher.WrappedDataWatcherObject;
 
 public class DataWatchCreator {
 
-	public static WrappedDataWatcher createDefaultWatcher(FakeMob mob) {
-		WrappedDataWatcher data = new WrappedDataWatcher();
-		addEntityDefaults(data, mob.getType());
+	static Serializer serialString = Registry.get(String.class);
+	static Serializer serialByte = Registry.get(Byte.class);
+	static Serializer serialFloat = Registry.get(Float.class);
+	static Serializer serialShort = Registry.get(Short.class);
+	static Serializer serialInt = Registry.get(Integer.class);
+	static Serializer serialBool = Registry.get(Boolean.class);
+	static Serializer serialUUID = Registry.get(UUID.class);
+	
+	public static WrappedDataWatcher createDefaultWatcher(FakeMob mob) {		
+		WrappedDataWatcher watcher = new WrappedDataWatcher();
+		watcher = addEntityDefaults(watcher, mob.getType());
 
 		//Custom Name:
 		if (mob.getCustomName() != null && !mob.getCustomName().isEmpty()) {
-			data.setObject(11, (byte) 1);
-			data.setObject(3, (byte) 1);
-			data.setObject(10, mob.getCustomName());
-			data.setObject(2, mob.getCustomName());
-		}
+			watcher.setObject(new WrappedDataWatcherObject(3, serialBool), true);
+			watcher.setObject(new WrappedDataWatcherObject(2, serialString), mob.getCustomName());
+		} 
 
 		//Sitting:
 		if (mob.isSitting()) {
 			if (mob.getType() == EntityType.PLAYER) {
-				data.setObject(0, (byte) 2);
+				watcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0x02);
 			} else {
-				data.setObject(16, (byte) 0x1);
+				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x01);
 			}
 		}
+				
+		if (mob.getType() == EntityType.PLAYER){
+			//isLayering
+			if (mob.isLayering()){
+				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x7F); //Skin flag
+			} 
+			
+			//isGliding:
+			if (mob.isGliding()) {
+				watcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0x80);
+			}
+		}
+			
 
-		return data;
+		return watcher;
 	}
 
-	public static void addEntityDefaults(WrappedDataWatcher watcher, EntityType type) {
+	public static WrappedDataWatcher addEntityDefaults(WrappedDataWatcher watcher, EntityType type) {
 		// Add EntityLiving defaults:
-		watcher.setObject(0, (byte) 0); //Entity options (like invisibility)
-		watcher.setObject(7, 0); //Potion effect color
-		watcher.setObject(8, (byte) 0); //Is potion effect active?
-		watcher.setObject(9, (byte) 0); //Number of Arrows
-		watcher.setObject(6, (float) 1.0f); //Health
+		watcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0); //Entity options (like invisibility)
+		watcher.setObject(new WrappedDataWatcherObject(7, serialInt), 0); //Potion effect color
+		watcher.setObject(new WrappedDataWatcherObject(8, serialBool), false); //Is potion effect active?
+		watcher.setObject(new WrappedDataWatcherObject(9, serialInt), 0); //Number of Arrows
+		watcher.setObject(new WrappedDataWatcherObject(6, serialFloat), (float) 1.0f); //Health
 
 		// Add EntityInsentient defaults:
 		if (type != EntityType.PLAYER) {
-			watcher.setObject(11, (byte) 1); //Custom Name Visible (Minecraft 1.7)
-			watcher.setObject(10, ""); //Custom Name (Minecraft 1.7)
-			watcher.setObject(3, (byte) 1); //Custom Name Visible (Minecraft 1.8)
-			watcher.setObject(2, ""); //Custom Name (Minecraft 1.8)
+			watcher.setObject(new WrappedDataWatcherObject(3, serialBool), false); //Custom Name Visible (Minecraft 1.9)
+			watcher.setObject(new WrappedDataWatcherObject(2, serialString), ""); //Custom Name (Minecraft 1.9)
 		}
 
 		switch (type) {
 			case BAT:
-				watcher.setObject(16, (byte) 0); //Is Hanging?
+				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //Is Hanging?
 				break;
 			case BLAZE:
-				watcher.setObject(16, (byte) 0); //On fire
+				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //On fire
 				break;
 			case SPIDER:
 			case CAVE_SPIDER:
-				watcher.setObject(16, (byte) 0); //In climbing?
+				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //In climbing?
 				break;
 			case CHICKEN:
 				break;
 			case CREEPER:
-				watcher.setObject(16, (byte) -1); //1 = Fuse, -1 = idle
-				watcher.setObject(17, (byte) 0); //Is Powered
+				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), -1); //1 = Fuse, -1 = idle
+				watcher.setObject(new WrappedDataWatcherObject(12, serialBool), false); //Is Powered
 				break;
 			case MUSHROOM_COW:
 			case COW:
 				break;
 			case ENDERMAN:
-				watcher.setObject(16, (short) 0); //Carried Block
-				watcher.setObject(17, (byte) 0); //Carried Block Data
-				watcher.setObject(18, (byte) 0); //Is screaming?
+				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0); //Carried Block Data
+				watcher.setObject(new WrappedDataWatcherObject(12, serialBool), false); //Is screaming?
 				break;
 			case ENDER_DRAGON:
 				break;
 			case GHAST:
-				watcher.setObject(16, (byte) 0); //Is attacking?
+				watcher.setObject(new WrappedDataWatcherObject(11, serialBool), false); //Is attacking?
 				break;
 			case GIANT:
 				break;
 			case HORSE:
-				watcher.setObject(16, 0);
-				watcher.setObject(19, (byte) 0); //Type: Horse
-				watcher.setObject(20, 0); //Color: White
-				watcher.setObject(21, ""); //Owner Name
-				watcher.setObject(22, 0); //No Armor
+				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0);
+				watcher.setObject(new WrappedDataWatcherObject(13, serialInt), 0); //Type: Horse
+				watcher.setObject(new WrappedDataWatcherObject(14, serialInt), 0); //Color: White
+				watcher.setObject(new WrappedDataWatcherObject(15, serialUUID), null); //Owner UUID
+				watcher.setObject(new WrappedDataWatcherObject(19, serialInt), 0); //No Armor
 				break;
 			case IRON_GOLEM:
-				watcher.setObject(16, (byte) 0); //Is the iron golem from a player created?
+				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //Is the iron golem from a player created?
 				break;
 			case SLIME:
 			case MAGMA_CUBE:
-				watcher.setObject(16, (byte) 1); //Slime size 1
+				watcher.setObject(new WrappedDataWatcherObject(11, serialInt),  1); //Slime size 1
 				break;
 			case OCELOT:
-				watcher.setObject(18, (byte) 0); //Ocelot Type
+				watcher.setObject(new WrappedDataWatcherObject(14, serialInt), 0); //Ocelot Type
 				break;
 			case PIG:
-				watcher.setObject(16, (byte) 0); //Has saddle ?
+				watcher.setObject(new WrappedDataWatcherObject(12, serialBool), false); //Has saddle ?
 				break;
 			case PIG_ZOMBIE:
 			case ZOMBIE:
-				watcher.setObject(12, (byte) 0); //Is child?
-				watcher.setObject(13, (byte) 0); //Is villager?
-				watcher.setObject(14, (byte) 0); //Is converting?
+				watcher.setObject(new WrappedDataWatcherObject(11, serialBool), false); //Is baby?
+				watcher.setObject(new WrappedDataWatcherObject(12, serialInt), 0); //Is villager?
+				watcher.setObject(new WrappedDataWatcherObject(13, serialBool), false); //Is converting?
+				watcher.setObject(new WrappedDataWatcherObject(14, serialBool), false); //Is hands up?
 				break;
-			case PLAYER:
-				watcher.setObject(0, (byte) 0); //Player state (Normal, not crouched)
-				watcher.setObject(10, (byte) 0x7F); //Skin flags
-				watcher.setObject(16, (byte) 0); //0x02 = Hide cape
-				watcher.setObject(17, 0.0f); //Absorption hearts
-				watcher.setObject(18, 0); //Score
+			case PLAYER:				
+				watcher.setObject(new WrappedDataWatcherObject(10, serialFloat), 0.0f); //Absorption hearts
+				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0); //Score
 				break;
 			case SHEEP:
-				watcher.setObject(16, (byte) 0); //Color
+				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0); //Color
 				break;
 			case SILVERFISH:
 				break;
 			case SKELETON:
-				watcher.setObject(13, (byte) 0); //Type. 0 = Normal, 1 = Wither
+				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0); //Type. 0 = Normal, 1 = Wither
 				break;
 			case SNOWMAN:
 				break;
 			case VILLAGER:
-				watcher.setObject(16, 0); //Type
+				watcher.setObject(new WrappedDataWatcherObject(12, serialInt), 1); //Type
 				break;
 			case WITCH:
-				watcher.setObject(21, (byte) 0); //Is agressive?
+				watcher.setObject(new WrappedDataWatcherObject(11, serialBool), false); //Is agressive?
 				break;
 			case WITHER:
-				watcher.setObject(17, 0);
-				watcher.setObject(18, 0);
-				watcher.setObject(19, 0);
-				watcher.setObject(20, 0);
+				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0);
+				watcher.setObject(new WrappedDataWatcherObject(12, serialInt), 0);
+				watcher.setObject(new WrappedDataWatcherObject(13, serialInt), 0);
+				watcher.setObject(new WrappedDataWatcherObject(14, serialInt), 0);
 				break;
 			case WOLF:
-				watcher.setObject(18, 20.0f); //Health
-				watcher.setObject(19, (byte) 0); //Begging
-				watcher.setObject(20, (byte) 14); //Collar color
+				//watcher.setObject(new WrappedDataWatcherObject(14, serialFloat), 20.0f); //Damage taken
+				watcher.setObject(new WrappedDataWatcherObject(15, serialBool), false); //Begging
+				watcher.setObject(new WrappedDataWatcherObject(26, serialInt), 14); //Collar color
 				break;
+		default:
+			break;
 		}
+		return watcher;
 	}
 
 }

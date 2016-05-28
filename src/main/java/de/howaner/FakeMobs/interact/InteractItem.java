@@ -1,6 +1,7 @@
 package de.howaner.FakeMobs.interact;
 
 import de.howaner.FakeMobs.util.FakeMob;
+
 import org.bukkit.ChatColor;
 import org.bukkit.Material;
 import org.bukkit.configuration.ConfigurationSection;
@@ -64,6 +65,7 @@ public class InteractItem implements InteractAction {
 		player.getInventory().addItem(this.item.clone());
 	}
 	
+	@SuppressWarnings("deprecation")
 	@Override
 	public String toString() {
 		StringBuilder builder = new StringBuilder();

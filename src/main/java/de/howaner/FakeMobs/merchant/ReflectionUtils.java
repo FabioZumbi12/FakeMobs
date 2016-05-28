@@ -5,6 +5,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.List;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.entity.Player;
@@ -14,7 +15,7 @@ public class ReflectionUtils {
 	
 	public static class OBCCraftItemStack {
 		
-		public static Class getOBCClass() {
+		public static Class<?> getOBCClass() {
 			return ReflectionUtils.getClassByName(ReflectionUtils.getOBCPackageName() + ".inventory.CraftItemStack");
 		}
 		
@@ -45,7 +46,7 @@ public class ReflectionUtils {
 	public static class NMSMerchantRecipeList {
 		private Object handle;
 		
-		public static Class getNMSClass() {
+		public static Class<?> getNMSClass() {
 			return ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".MerchantRecipeList");
 		}
 		
@@ -88,7 +89,7 @@ public class ReflectionUtils {
 		
 		public List<NMSMerchantRecipe> getRecipes() {
 			List<NMSMerchantRecipe> recipeList = new ArrayList<NMSMerchantRecipe>();
-			for (Object obj : (List) handle) {
+			for (Object obj : (List<?>) handle) {
 				recipeList.add(new NMSMerchantRecipe(obj));
 			}
 			return recipeList;
@@ -108,14 +109,14 @@ public class ReflectionUtils {
 		
 		public NMSMerchantRecipe(Object item1, Object item2, Object item3) {
 			try {
-				Class isClass = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".ItemStack");
+				Class<?> isClass = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".ItemStack");
 				this.merchantRecipe = getNMSClass().getDeclaredConstructor(isClass, isClass, isClass).newInstance(item1, item2, item3);
 			} catch (Exception e) {
 				e.printStackTrace();
 			}
 		}
 		
-		public static Class getNMSClass() {
+		public static Class<?> getNMSClass() {
 			return ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".MerchantRecipe");
 		}
 		
@@ -184,7 +185,7 @@ public class ReflectionUtils {
 		public static Object ADD_PLAYER          = getNMSAction("ADD_PLAYER");
 		public static Object UPDATE_DISPLAY_NAME = getNMSAction("UPDATE_DISPLAY_NAME");
 		public static Object REMOVE_PLAYER       = getNMSAction("REMOVE_PLAYER");
-		private static Class nmsClass;
+		private static Class<?> nmsClass;
 
 		// Return: EnumPlayerInfoAction
 		private static Object getNMSAction(String name) {
@@ -197,7 +198,8 @@ public class ReflectionUtils {
 				return null;
 			}
 		}
-
+		
+		@SuppressWarnings("rawtypes")
 		public static Class getNMSClass() {
 			if (nmsClass == null) {
 				nmsClass = getClassByName(getNMSPackageName() + ".PacketPlayOutPlayerInfo$EnumPlayerInfoAction"); // Spigot 1.8.3
@@ -211,8 +213,9 @@ public class ReflectionUtils {
 	}
 
 	// Return: EnumGamemode
+	@SuppressWarnings("deprecation")
 	public static Object createNMSGameMode(GameMode gameMode) {
-		Class c = getClassByName(getNMSPackageName() + ".EnumGamemode");  // Spigot 1.8.0
+		Class<?> c = getClassByName(getNMSPackageName() + ".EnumGamemode");  // Spigot 1.8.0
 		if (c == null) {
 			// Spigot 1.8.3
 			c = getClassByName(getNMSPackageName() + ".WorldSettings$EnumGamemode");
@@ -229,19 +232,17 @@ public class ReflectionUtils {
 	}
 
 	public static Object createPlayerInfoData(Object gameProfile, GameMode gameMode, int ping, String nickName) {
-		boolean is_1_8_3 = true;
-		Class playerInfoDataClass = getClassByName(getNMSPackageName() + ".PacketPlayOutPlayerInfo$PlayerInfoData");
+		Class<?> playerInfoDataClass = getClassByName(getNMSPackageName() + ".PacketPlayOutPlayerInfo$PlayerInfoData");
 
 		if (playerInfoDataClass == null) {
 			// Spigot 1.8
 			playerInfoDataClass = getClassByName(getNMSPackageName() + ".PlayerInfoData");
-			is_1_8_3 = false;
 		}
 
 		Object nmsGameMode = createNMSGameMode(gameMode);
 
 		try {
-			Constructor constructor = playerInfoDataClass.getDeclaredConstructor(
+			Constructor<?> constructor = playerInfoDataClass.getDeclaredConstructor(
 					getClassByName(getNMSPackageName() + ".PacketPlayOutPlayerInfo"),
 					getClassByName("com.mojang.authlib.GameProfile"),
 					int.class,
@@ -257,8 +258,8 @@ public class ReflectionUtils {
 	}
 
 	public static Object fillProfileProperties(Object gameProfile) {
-		Class serverClass = getClassByName(getNMSPackageName() + ".MinecraftServer");
-		Class sessionServiceClass = getClassByName("com.mojang.authlib.minecraft.MinecraftSessionService");
+		Class<?> serverClass = getClassByName(getNMSPackageName() + ".MinecraftServer");
+		Class<?> sessionServiceClass = getClassByName("com.mojang.authlib.minecraft.MinecraftSessionService");
 
 		try {
 			Object minecraftServer;
@@ -270,11 +271,7 @@ public class ReflectionUtils {
 
 			Object sessionService;
 			{
-				String methodName;
-				if (existsMethod(serverClass, "aC", sessionServiceClass))
-					methodName = "aC"; //1.8.3
-				else
-					methodName = "aD"; //1.8.8
+				String methodName = "aH";
 				Method method = serverClass.getDeclaredMethod(methodName);
 				method.setAccessible(true);
 				sessionService = method.invoke(minecraftServer);
@@ -289,24 +286,15 @@ public class ReflectionUtils {
 
 			return result;
 		} catch (Exception ex) {
-			ex.printStackTrace();
+			//ex.printStackTrace();
 			return null;
 		}
 	}
-
-	private static boolean existsMethod(Class clazz, String methodName, Class returnClass) {
-		for (Method method : clazz.getDeclaredMethods()) {
-			if (method.getName().equals(methodName) && method.getGenericReturnType() == returnClass) {
-				return true;
-			}
-		}
-		return false;
-	}
-
+	
 	/** Return: GameProfile */
 	public static Object searchUUID(String playerName) {
-		Class serverClass = getClassByName(getNMSPackageName() + ".MinecraftServer");
-		Class userCacheClass = getClassByName(getNMSPackageName() + ".UserCache");
+		Class<?> serverClass = getClassByName(getNMSPackageName() + ".MinecraftServer");
+		Class<?> userCacheClass = getClassByName(getNMSPackageName() + ".UserCache");
 
 		try {
 			Object minecraftServer;
@@ -339,9 +327,9 @@ public class ReflectionUtils {
 			return null;
 		}
 
-		Class c = getClassByName(getNMSPackageName() + ".ChatComponentText");
+		Class<?> c = getClassByName(getNMSPackageName() + ".ChatComponentText");
 		try {
-			Constructor constructor = c.getDeclaredConstructor(String.class);
+			Constructor<?> constructor = c.getDeclaredConstructor(String.class);
 			return constructor.newInstance(text);
 		} catch (Exception ex) {
 			ex.printStackTrace();
@@ -351,7 +339,7 @@ public class ReflectionUtils {
 	
 	public static Object toEntityHuman(Player player) {
 		try {
-			Class c = getClassByName(getOBCPackageName() + ".entity.CraftPlayer");
+			Class<?> c = getClassByName(getOBCPackageName() + ".entity.CraftPlayer");
 			Method m = c.getDeclaredMethod("getHandle");
 			m.setAccessible(true);
 			return m.invoke(player);
@@ -361,7 +349,7 @@ public class ReflectionUtils {
 		}
 	}
 	
-	public static Class getClassByName(String name) {
+	public static Class<?> getClassByName(String name) {
 		try {
 			return Class.forName(name);
 		} catch (Exception e) {
@@ -370,13 +358,13 @@ public class ReflectionUtils {
 		}
 	}
 	
-	public static Object getField(Class c, Object obj, String key) throws Exception {
+	public static Object getField(Class<?> c, Object obj, String key) throws Exception {
 		Field field = c.getDeclaredField(key);
 		field.setAccessible(true);
 		return field.get(obj);
 	}
 	
-	public static void replaceField(Class c, Object obj, String key, Object value) throws Exception {
+	public static void replaceField(Class<?> c, Object obj, String key, Object value) throws Exception {
 		Field field = c.getDeclaredField(key);
 		field.setAccessible(true);
 		field.set(obj, value);

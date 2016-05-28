@@ -6,17 +6,20 @@ import de.howaner.FakeMobs.event.PlayerInteractFakeMobEvent;
 import de.howaner.FakeMobs.event.PlayerInteractFakeMobEvent.Action;
 import de.howaner.FakeMobs.util.Cache;
 import de.howaner.FakeMobs.util.FakeMob;
+
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
 import org.bukkit.entity.Player;
+import org.bukkit.event.Event.Result;
 import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.entity.PlayerDeathEvent;
 import org.bukkit.event.player.PlayerChangedWorldEvent;
+import org.bukkit.event.player.PlayerInteractEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerMoveEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -27,6 +30,7 @@ import org.bukkit.event.world.WorldUnloadEvent;
 
 public class MobListener implements Listener {
 	private FakeMobsPlugin plugin;
+	private boolean cancel = false;
 	
 	public MobListener(FakeMobsPlugin plugin) {
 		this.plugin = plugin;
@@ -42,6 +46,15 @@ public class MobListener implements Listener {
 		MyWorldAccess.unregisterWorldAccess(event.getWorld());
 	}
 
+	@EventHandler (priority = EventPriority.LOWEST)
+	public void onPlayerInteract(PlayerInteractEvent event) {
+		if (cancel || plugin.interactCache.containsKey(event.getPlayer())){	
+			if (cancel) cancel = false;
+			event.setUseItemInHand(Result.DENY);
+			event.setCancelled(true);				
+		}
+	}
+	
 	@EventHandler
 	public void onSelectMob(PlayerInteractFakeMobEvent event) {
 		Player player = event.getPlayer();
@@ -52,6 +65,34 @@ public class MobListener implements Listener {
 			return;
 		}
 		
+		if (event.getAction() == Action.RIGHT_CLICK && event.getItemHand() != null && plugin.interactCache.containsKey(player)){
+			String slot = plugin.interactCache.get(player);			
+			if (slot.equalsIgnoreCase("hand")) {
+				mob.getInventory().setItemInHand(event.getItemHand());
+				player.sendMessage(ChatColor.GOLD + "Setted Item in Hand to " + event.getItemHand().getType().name() + "!");
+			} else if (slot.equalsIgnoreCase("offhand")) {
+				mob.getInventory().setOffHand(event.getItemHand());
+				player.sendMessage(ChatColor.GOLD + "Setted Off Hand to " + event.getItemHand().getType().name() + "!");
+			} else if (slot.equalsIgnoreCase("boots")) {
+				mob.getInventory().setBoots(event.getItemHand());
+				player.sendMessage(ChatColor.GOLD + "Setted Boots to " + event.getItemHand().getType().name() + "!");
+			} else if (slot.equalsIgnoreCase("leggings")) {
+				mob.getInventory().setLeggings(event.getItemHand());
+				player.sendMessage(ChatColor.GOLD + "Setted Leggings to " + event.getItemHand().getType().name() + "!");
+			} else if (slot.equalsIgnoreCase("chestplate")) {
+				mob.getInventory().setChestPlate(event.getItemHand());
+				player.sendMessage(ChatColor.GOLD + "Setted ChestPlate to " + event.getItemHand().getType().name() + "!");
+			} else if (slot.equalsIgnoreCase("helmet")) {
+				mob.getInventory().setHelmet(event.getItemHand());
+				player.sendMessage(ChatColor.GOLD + "Setted Helmet to " + event.getItemHand().getType().name() + "!");
+			}
+			plugin.interactCache.remove(event.getPlayer());
+			mob.updateInventory();
+			plugin.saveMobsFile();
+			cancel = true;
+			return;
+		}
+				
 		if (event.getAction() == Action.RIGHT_CLICK && mob.haveShop())
 			mob.getShop().openShop(player, (mob.getCustomName() != null && !mob.getCustomName().isEmpty()) ? mob.getCustomName() : null);
 	}
@@ -90,8 +131,13 @@ public class MobListener implements Listener {
 	
 	@EventHandler
 	public void onPlayerJoin(PlayerJoinEvent event) {
-		Player player = event.getPlayer();
-		this.plugin.updatePlayerView(player);
+		final Player player = event.getPlayer();
+		Bukkit.getScheduler().runTaskLater(plugin, new Runnable(){
+			@Override
+			public void run() {
+				plugin.updatePlayerView(player);
+			}			
+		}, 10);		
 	}
 	
 	@EventHandler

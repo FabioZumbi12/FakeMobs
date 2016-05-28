@@ -15,7 +15,7 @@ public class NMSMerchant implements java.lang.reflect.InvocationHandler {
 	public Object invoke(Object proxy, Method m, Object[] args) {
 		try {
 			if (m == null || m.getName() == null) return null;
-			Class entityHuman = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".EntityHuman");
+			Class<?> entityHuman = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".EntityHuman");
 			if (m.getName().equals("a_") && args.length == 1 && args[0] != null && args[0].getClass().isInstance(entityHuman))
 				this.a_(args[0]);
 			else if (m.getName().equals("b") || m.getName().equals("m_") || m.getName().equals("u_") || m.getName().equals("v_")) //m_ = 1.6.4, b = 1.7.4, u_ = Spigot 1.8, v_ = Spigot 1.8.3
@@ -59,7 +59,7 @@ public class NMSMerchant implements java.lang.reflect.InvocationHandler {
 	/* Other Methods */
 	public Player getBukkitEntity() {
 		try {
-			Class c = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".EntityHuman");
+			Class<?> c = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".EntityHuman");
 			Method m = c.getDeclaredMethod("getBukkitEntity");
 			m.setAccessible(true);
 			return (Player) m.invoke(this.c);
@@ -81,7 +81,7 @@ public class NMSMerchant implements java.lang.reflect.InvocationHandler {
 		this.c = player;
 		
 		try {
-			Class classs = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".EntityPlayer");
+			Class<?> classs = ReflectionUtils.getClassByName(ReflectionUtils.getNMSPackageName() + ".EntityPlayer");
 			Method m;
 			if (this.getMethodArgs(classs, "openTrade") == 2) {
 				// Older than Spigot 1.8 (maybe Bukkit 1.7.10)
@@ -99,7 +99,7 @@ public class NMSMerchant implements java.lang.reflect.InvocationHandler {
 		}
 	}
 
-	private int getMethodArgs(Class classs, String methodName) {
+	private int getMethodArgs(Class<?> classs, String methodName) {
 		for (Method method : classs.getDeclaredMethods()) {
 			if (method.getName().equals(methodName)) {
 				return method.getParameterTypes().length;

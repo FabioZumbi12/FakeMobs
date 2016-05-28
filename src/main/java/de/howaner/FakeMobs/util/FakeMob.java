@@ -1,26 +1,32 @@
 package de.howaner.FakeMobs.util;
 
-import com.comphenix.protocol.PacketType;
-import de.howaner.FakeMobs.interact.InteractAction;
-import com.comphenix.protocol.events.PacketContainer;
-import com.comphenix.protocol.wrappers.WrappedDataWatcher;
-import com.comphenix.protocol.wrappers.WrappedGameProfile;
-import com.comphenix.protocol.wrappers.WrappedSignedProperty;
-import com.google.common.base.Charsets;
-import com.google.common.collect.Multimap;
-import de.howaner.FakeMobs.FakeMobsPlugin;
-import de.howaner.FakeMobs.merchant.ReflectionUtils;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.UUID;
 import java.util.logging.Level;
+
 import org.bukkit.Bukkit;
 import org.bukkit.GameMode;
 import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+
+import com.comphenix.protocol.PacketType;
+import com.comphenix.protocol.events.PacketContainer;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher.Registry;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher.Serializer;
+import com.comphenix.protocol.wrappers.WrappedDataWatcher.WrappedDataWatcherObject;
+import com.comphenix.protocol.wrappers.WrappedGameProfile;
+import com.comphenix.protocol.wrappers.WrappedSignedProperty;
+import com.google.common.base.Charsets;
+import com.google.common.collect.Multimap;
+
+import de.howaner.FakeMobs.FakeMobsPlugin;
+import de.howaner.FakeMobs.interact.InteractAction;
+import de.howaner.FakeMobs.merchant.ReflectionUtils;
 
 public class FakeMob {
 	private final int id;
@@ -32,12 +38,18 @@ public class FakeMob {
 	private final List<Player> loadedPlayers = new ArrayList<Player>();
 
 	private boolean sitting = false;
+	private boolean gliding = false;
 	private boolean invisibility = false;
 	private boolean playerLook = false;
+	private boolean layering = true;
 	private MobInventory inventory = new MobInventory();
 	private MobShop shop = null;
 	private Multimap<String, WrappedSignedProperty> playerSkin;  // Only used if this.getType() == EntityType.PLAYER
-	private final List<InteractAction> interacts = new ArrayList<InteractAction>();
+	private final List<InteractAction> interacts = new ArrayList<InteractAction>();	
+	static Serializer serialString = Registry.get(String.class);
+	static Serializer serialByte = Registry.get(Byte.class);
+	static Serializer serialFloat = Registry.get(Float.class);
+	static Serializer serialBool = Registry.get(Boolean.class);
 	
 	public FakeMob(int id, Location loc, EntityType type) {
 		this.id = id;
@@ -168,6 +180,18 @@ public class FakeMob {
 		return this.type;
 	}
 	
+	public boolean isLayering() {		
+		return this.layering;
+	}
+	
+	public void showLayer(boolean layer) {		
+		this.layering = layer;
+	}
+	
+	public boolean isGliding() {
+		return this.gliding;
+	}
+	
 	public boolean isSitting() {
 		return this.sitting;
 	}
@@ -198,15 +222,11 @@ public class FakeMob {
 		}
 
 		if (this.name == null) {
-			this.dataWatcher.setObject(11, (byte) 0);
-			this.dataWatcher.setObject(10, "");
-			this.dataWatcher.setObject(3, (byte) 0);
-			this.dataWatcher.setObject(2, "");
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(3, serialBool), true);
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(2, serialString), "");
 		} else {
-			this.dataWatcher.setObject(11, (byte) 1);
-			this.dataWatcher.setObject(10, this.name);
-			this.dataWatcher.setObject(3, (byte) 1);
-			this.dataWatcher.setObject(2, this.name);
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(3, serialBool), true);
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(2, serialString), this.name);
 		}
 	}
 	
@@ -218,14 +238,25 @@ public class FakeMob {
 		if (this.getType() == EntityType.PLAYER) {
 			byte current = this.dataWatcher.getByte(0);
 			if (sitting)
-				this.dataWatcher.setObject(0, (byte) (current | 1 << 1));
+				this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) (current | 1 << 1));
 			else
-				this.dataWatcher.setObject(0, (byte) (current & (1 << 1 ^ 0xFFFFFFFF)));
+				this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) (current & (1 << 1 ^ 0xFFFFFFFF)));
 		} else if (sitting) {
-			this.dataWatcher.setObject(16, (byte) 0x1);
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x1);
 		} else {
-			this.dataWatcher.setObject(16, (byte) 0x0);
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x0);
 		}
+	}
+	
+	public void setGliding(boolean gliding) {
+		if (this.type != EntityType.PLAYER) return;
+		if (this.gliding == gliding) return;
+		this.gliding = gliding;		
+		
+		if (gliding)
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0x80);
+		else
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0);
 	}
 
 	public void setInvisibility(boolean invisibility) {
@@ -234,9 +265,9 @@ public class FakeMob {
 
 		byte current = this.dataWatcher.getByte(0);
 		if (invisibility) {
-			this.dataWatcher.setObject(0, (byte) (current | 1 << 5));
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) (current | 1 << 5));
 		} else {
-			this.dataWatcher.setObject(0, (byte) (current & (1 << 5 ^ 0xFFFFFFFF)));
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) (current & (1 << 5 ^ 0xFFFFFFFF)));
 		}
 	}
 	
@@ -308,48 +339,36 @@ public class FakeMob {
 			this.sendEntitySpawnPacket(player);
 	}
 
+	@SuppressWarnings("unchecked")
 	public void sendPlayerSpawnPacket(final Player player) {
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.NAMED_ENTITY_SPAWN);
-
+		
 		packet.getIntegers().write(0, this.getEntityId());
-		packet.getIntegers().write(1, (int) Math.floor(this.loc.getX() * 32D)); //X
-		packet.getIntegers().write(2, (int) Math.floor(this.loc.getY() * 32D)); //Y
-		packet.getIntegers().write(3, (int) Math.floor(this.loc.getZ() * 32D)); //Z
-		packet.getIntegers().write(4, 0); //Item in Hand Slot
-
+		packet.getDoubles().write(0, this.loc.getX()); //X
+		packet.getDoubles().write(1, this.loc.getY()); //Y
+		packet.getDoubles().write(2, this.loc.getZ()); //Z
+		
 		packet.getBytes().write(0, (byte)(int)(this.loc.getYaw() * 256.0F / 360.0F)); //Yaw
 		packet.getBytes().write(1, (byte)(int)(this.loc.getPitch() * 256.0F / 360.0F)); //Pitch
-
+		
 		final WrappedGameProfile profile = new WrappedGameProfile(this.uniqueId, (this.getCustomName() == null) ? "No Name" : this.getCustomName());
 		if (this.playerSkin != null) {
 			profile.getProperties().putAll(this.playerSkin);
 		}
-
-		final boolean isSpigot18 = (packet.getGameProfiles().size() == 0);
-		if (isSpigot18)
-			packet.getSpecificModifier(UUID.class).write(0, profile.getUUID());
-		else
-			packet.getGameProfiles().write(0, profile);
+		
+		packet.getSpecificModifier(UUID.class).write(0, profile.getUUID());
 		packet.getDataWatcherModifier().write(0, this.dataWatcher);
 
 		int protocolVersion = FakeMobsPlugin.getPlugin().getProtocolManager().getProtocolVersion(player);
 		if (protocolVersion >= 47 || protocolVersion == Integer.MIN_VALUE) {
 			PacketContainer infoPacket = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.PLAYER_INFO);
 
-			if (isSpigot18) {
-				Object playerInfo = ReflectionUtils.createPlayerInfoData(profile.getHandle(), GameMode.SURVIVAL, 0, " ");
-				infoPacket.getSpecificModifier(ReflectionUtils.PlayerInfoAction.getNMSClass()).write(0, ReflectionUtils.PlayerInfoAction.ADD_PLAYER);
-				infoPacket.getSpecificModifier(List.class).write(0, Arrays.asList(new Object[] { playerInfo }));
-			} else {
-				infoPacket.getIntegers().write(0, 0); //Packet: Create
-				infoPacket.getIntegers().write(1, 0); //Gamemode: Survival
-				infoPacket.getIntegers().write(2, 0); //Ping: 0
-
-				infoPacket.getGameProfiles().write(0, profile);
-			}
+			Object playerInfo = ReflectionUtils.createPlayerInfoData(profile.getHandle(), GameMode.SURVIVAL, 0, " ");
+			infoPacket.getSpecificModifier(ReflectionUtils.PlayerInfoAction.getNMSClass()).write(0, ReflectionUtils.PlayerInfoAction.ADD_PLAYER);
+			infoPacket.getSpecificModifier(List.class).write(0, Arrays.asList(new Object[] { playerInfo }));
 
 			try {
-				FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, infoPacket);
+				FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, infoPacket);				
 			} catch (Exception e) {
 				FakeMobsPlugin.log.log(Level.SEVERE, "Can''t send player info packet to {0}", player.getName());
 				e.printStackTrace();
@@ -363,17 +382,9 @@ public class FakeMob {
 					}
 					PacketContainer infoPacket = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.PLAYER_INFO);
 
-					if (isSpigot18) {
-						Object playerInfo = ReflectionUtils.createPlayerInfoData(profile.getHandle(), GameMode.SURVIVAL, 0, "");
-						infoPacket.getSpecificModifier(ReflectionUtils.PlayerInfoAction.getNMSClass()).write(0, ReflectionUtils.PlayerInfoAction.REMOVE_PLAYER);
-						infoPacket.getSpecificModifier(List.class).write(0, Arrays.asList(new Object[] { playerInfo }));
-					} else {
-						infoPacket.getIntegers().write(0, 4); //Packet: Remove
-						infoPacket.getIntegers().write(1, 0); //Gamemode: Survival
-						infoPacket.getIntegers().write(2, 0); //Ping: 0
-
-						infoPacket.getGameProfiles().write(0, profile);
-					}
+					Object playerInfo = ReflectionUtils.createPlayerInfoData(profile.getHandle(), GameMode.SURVIVAL, 0, "");
+					infoPacket.getSpecificModifier(ReflectionUtils.PlayerInfoAction.getNMSClass()).write(0, ReflectionUtils.PlayerInfoAction.REMOVE_PLAYER);
+					infoPacket.getSpecificModifier(List.class).write(0, Arrays.asList(new Object[] { playerInfo }));
 
 					try {
 						FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, infoPacket);
@@ -386,7 +397,8 @@ public class FakeMob {
 		}
 
 		try {
-			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);
+			this.sendMetaPacket(player);
+			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);			
 		} catch (Exception e) {
 			FakeMobsPlugin.log.log(Level.SEVERE, "Can''t send spawn packet to {0} from mob #{1}", new Object[]{ player.getName(), this.getId() });
 			e.printStackTrace();
@@ -397,14 +409,15 @@ public class FakeMob {
 		this.sendInventoryPacket(player);
 	}
 	
+	@SuppressWarnings("deprecation")
 	public void sendEntitySpawnPacket(Player player) {
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.SPAWN_ENTITY_LIVING);
 
 		packet.getIntegers().write(0, this.getEntityId());
 		packet.getIntegers().write(1, (int) this.type.getTypeId()); //Id
-		packet.getIntegers().write(2, (int) Math.floor(this.loc.getX() * 32D)); //X
-		packet.getIntegers().write(3, (int) Math.floor((this.loc.getY() + 0.001D) * 32D)); //Y
-		packet.getIntegers().write(4, (int) Math.floor(this.loc.getZ() * 32D)); //Z
+		packet.getDoubles().write(0, this.loc.getX()); //X
+		packet.getDoubles().write(1, this.loc.getY()); //Y
+		packet.getDoubles().write(2, this.loc.getZ()); //Z
 
 		packet.getBytes().write(0, (byte)(int)(this.loc.getYaw() * 256.0F / 360.0F)); //Yaw
 		packet.getBytes().write(1, (byte)(int)(this.loc.getPitch() * 256.0F / 360.0F)); //Pitch
@@ -413,7 +426,7 @@ public class FakeMob {
 		packet.getDataWatcherModifier().write(0, this.dataWatcher);
 
 		try {
-			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);
+			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);			
 		} catch (Exception e) {
 			FakeMobsPlugin.log.log(Level.SEVERE, "Can''t send spawn packet to {0} from mob #{1}", new Object[]{player.getName(), this.getId()});
 			e.printStackTrace();
@@ -427,10 +440,14 @@ public class FakeMob {
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_METADATA);
 
 		packet.getIntegers().write(0, this.getEntityId());
+		if (this.isLayering())
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x7F);
+		else 
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0);
 		packet.getWatchableCollectionModifier().write(0, this.dataWatcher.getWatchableObjects());
 
 		try {
-			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);
+			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);			
 		} catch (Exception e) {
 			FakeMobsPlugin.log.log(Level.SEVERE, "Can''t send metadata oacket to {0} from mob #{1}", new Object[]{player.getName(), this.getId()});
 			e.printStackTrace();
@@ -450,7 +467,11 @@ public class FakeMob {
 		}
 	}
 	
-	public void sendLookPacket(Player player, Location point) {
+	public void sendLookPacket(Player player, Location point) {				
+		this.sendLookPacket(player, getLookYaw(point));
+	}
+	
+	public double getLookYaw(Location point){
 		double xDiff = point.getX() - this.loc.getX();
 		//double yDiff = point.getY() - this.loc.getY();
 		double zDiff = point.getZ() - this.loc.getZ();
@@ -458,15 +479,31 @@ public class FakeMob {
 		//double DistanceY = Math.sqrt(DistanceXZ * DistanceXZ + yDiff * yDiff);
 		double newYaw = Math.acos(xDiff / DistanceXZ) * 180.0D / 3.141592653589793D;
 		//double newPitch = Math.acos(yDiff / DistanceY) * 180.0D / 3.141592653589793D - 90.0D;
-		if (zDiff < 0.0D)
-			newYaw += Math.abs(180.0D - newYaw) * 2.0D;
+		if (zDiff < 0.0D){
+			newYaw += Math.abs(180.0D - newYaw) * 2.0D;			
+		}			
 		double yaw = ((float)newYaw - 98.0D);
-		
-		this.sendLookPacket(player, yaw);
+		return yaw;
 	}
 	
 	public void sendLookPacket(Player player, double yaw) {
+		sendBodyLookPacket(player, yaw);//Rotate body
+		
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_HEAD_ROTATION);
+
+		packet.getIntegers().write(0, this.getEntityId());
+		packet.getBytes().write(0, (byte)(int)(yaw * 256.0F / 360.0F));
+		
+		try {
+			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);
+		} catch (Exception e) {
+			FakeMobsPlugin.log.log(Level.SEVERE, "Can''t send look packet to {0} from mob #{1}", new Object[]{player.getName(), this.getId()});
+			e.printStackTrace();
+		}
+	}
+	
+	private void sendBodyLookPacket(Player player, double yaw) {
+		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_LOOK);
 
 		packet.getIntegers().write(0, this.getEntityId());
 		packet.getBytes().write(0, (byte)(int)(yaw * 256.0F / 360.0F));
@@ -483,9 +520,9 @@ public class FakeMob {
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_TELEPORT);
 
 		packet.getIntegers().write(0, this.getEntityId()); //Id
-		packet.getIntegers().write(1, (int) Math.floor(this.loc.getX() * 32)); //X
-		packet.getIntegers().write(2, (int) Math.floor((this.loc.getY() + 0.001D) * 32)); //Y
-		packet.getIntegers().write(3, (int) Math.floor(this.loc.getZ() * 32)); //Z
+		packet.getDoubles().write(0, this.loc.getX()); //X
+		packet.getDoubles().write(1, this.loc.getY()); //Y
+		packet.getDoubles().write(2, this.loc.getZ()); //Z
 		
 		packet.getBytes().write(0, (byte)(int)(this.loc.getYaw() * 256.0F / 360.0F)); //Yaw
 		packet.getBytes().write(1, (byte)(int)(this.loc.getPitch() * 256.0F / 360.0F)); //Pitch
@@ -498,6 +535,7 @@ public class FakeMob {
 		}
 	}
 	
+	@SuppressWarnings("unchecked")
 	public void sendDestroyPacket(Player player) {
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_DESTROY);
 		packet.getIntegerArrays().write(0, new int[] { this.getEntityId() });
@@ -514,18 +552,9 @@ public class FakeMob {
 			WrappedGameProfile profile = new WrappedGameProfile(this.uniqueId, (this.getCustomName() == null) ? "No Name" : this.getCustomName());
 			PacketContainer infoPacket = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.PLAYER_INFO);
 
-			boolean spigot18 = (infoPacket.getIntegers().size() == 0);
-			if (spigot18) {
-				Object playerInfo = ReflectionUtils.createPlayerInfoData(profile.getHandle(), GameMode.SURVIVAL, 0, "");
-				infoPacket.getSpecificModifier(ReflectionUtils.PlayerInfoAction.getNMSClass()).write(0, ReflectionUtils.PlayerInfoAction.REMOVE_PLAYER);
-				infoPacket.getSpecificModifier(List.class).write(0, Arrays.asList(new Object[] { playerInfo }));
-			} else {
-				infoPacket.getIntegers().write(0, 4);
-				infoPacket.getIntegers().write(1, 0);
-				infoPacket.getIntegers().write(2, 0);
-
-				infoPacket.getGameProfiles().write(0, profile);
-			}
+			Object playerInfo = ReflectionUtils.createPlayerInfoData(profile.getHandle(), GameMode.SURVIVAL, 0, "");
+			infoPacket.getSpecificModifier(ReflectionUtils.PlayerInfoAction.getNMSClass()).write(0, ReflectionUtils.PlayerInfoAction.REMOVE_PLAYER);
+			infoPacket.getSpecificModifier(List.class).write(0, Arrays.asList(new Object[] { playerInfo }));
 
 			try {
 				FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, infoPacket);
@@ -535,5 +564,5 @@ public class FakeMob {
 			}
 		}
 	}
-	
+			
 }

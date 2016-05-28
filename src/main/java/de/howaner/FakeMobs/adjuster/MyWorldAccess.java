@@ -2,12 +2,14 @@ package de.howaner.FakeMobs.adjuster;
 
 import de.howaner.FakeMobs.FakeMobsPlugin;
 import de.howaner.FakeMobs.merchant.ReflectionUtils;
+
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
 import java.util.Iterator;
 import java.util.List;
 import java.util.logging.Level;
+
 import org.bukkit.Bukkit;
 import org.bukkit.World;
 
@@ -17,7 +19,7 @@ public class MyWorldAccess implements java.lang.reflect.InvocationHandler {
 	public Object invoke(Object proxy, Method m, Object[] args) {
 		try {
 			if (m == null || m.getName() == null) return null;
-			Class entityClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".Entity");
+			Class<?> entityClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".Entity");
 
 			if (m.getName().equals("a") && args.length == 1 && args[0] != null && classInstance(args[0].getClass(), entityClass)) {
 				this.onAddEntity();
@@ -28,7 +30,7 @@ public class MyWorldAccess implements java.lang.reflect.InvocationHandler {
 		return null;
 	}
 
-	private boolean classInstance(Class clazz, Class instance) {
+	private boolean classInstance(Class<?> clazz, Class<?> instance) {
 		while (clazz != null) {
 			if (clazz == instance) {
 				return true;
@@ -43,9 +45,10 @@ public class MyWorldAccess implements java.lang.reflect.InvocationHandler {
 		FakeMobsPlugin.getPlugin().adjustEntityCount();
 	}
 
-	private static List getAccessList(World world) throws Exception {
-		Class craftWorldClass = Class.forName(ReflectionUtils.getOBCPackageName() + ".CraftWorld");
-		Class worldClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".World");
+	@SuppressWarnings("unchecked")
+	private static List<Object> getAccessList(World world) throws Exception {
+		Class<?> craftWorldClass = Class.forName(ReflectionUtils.getOBCPackageName() + ".CraftWorld");
+		Class<?> worldClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".World");
 
 		Object nmsWorld;
 		{
@@ -54,11 +57,11 @@ public class MyWorldAccess implements java.lang.reflect.InvocationHandler {
 			nmsWorld = method.invoke(world);
 		}
 
-		List accessList;
+		List<Object> accessList;
 		{
 			Field field = worldClass.getDeclaredField("u");
 			field.setAccessible(true);
-			accessList = (List) field.get(nmsWorld);
+			accessList = (List<Object>) field.get(nmsWorld);
 		}
 
 		return accessList;
@@ -66,8 +69,8 @@ public class MyWorldAccess implements java.lang.reflect.InvocationHandler {
 
 	public static void registerWorldAccess(World world) {
 		try {
-			Class iWorldAccessClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".IWorldAccess");
-			List accessList = getAccessList(world);
+			Class<?> iWorldAccessClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".IWorldAccess");
+			List<Object> accessList = getAccessList(world);
 
 			Object myAccess = Proxy.newProxyInstance(Bukkit.class.getClassLoader(), new Class[] { iWorldAccessClass }, new MyWorldAccess());
 			accessList.add(myAccess);
@@ -79,12 +82,12 @@ public class MyWorldAccess implements java.lang.reflect.InvocationHandler {
 
 	public static void unregisterWorldAccess(World world) {
 		try {
-			Class iWorldAccessClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".IWorldAccess");
-			Class proxyClass = Proxy.getProxyClass(Bukkit.class.getClassLoader(), new Class[] { iWorldAccessClass });
+			Class<?> iWorldAccessClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".IWorldAccess");
+			Class<?> proxyClass = Proxy.getProxyClass(Bukkit.class.getClassLoader(), new Class[] { iWorldAccessClass });
 
-			List accessList = getAccessList(world);
+			List<Object> accessList = getAccessList(world);
 
-			Iterator itr = accessList.iterator();
+			Iterator<Object> itr = accessList.iterator();
 			while (itr.hasNext()) {
 				if (itr.next().getClass() == proxyClass) {
 					itr.remove();

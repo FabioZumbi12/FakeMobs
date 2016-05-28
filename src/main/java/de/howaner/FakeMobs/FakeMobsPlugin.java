@@ -51,6 +51,7 @@ public class FakeMobsPlugin extends JavaPlugin {
 	private final Map<Integer, FakeMob> mobs = new HashMap<Integer, FakeMob>();
 	private ProtocolListener pListener;
 	private SkinQueue skinQueue;
+	public Map<Player,String> interactCache = new HashMap<Player,String>();
 	
 	@Override
 	public void onEnable() {
@@ -69,10 +70,11 @@ public class FakeMobsPlugin extends JavaPlugin {
 		Bukkit.getPluginManager().registerEvents(new MobListener(this), this);
 		this.getCommand("FakeMob").setExecutor(new FakeMobCommand(this));
 		
-		for (Player player : Bukkit.getOnlinePlayers())
-			this.updatePlayerView(player);
+		for (Player player : Bukkit.getOnlinePlayers()){
+			this.updatePlayerView(player);			
+		}
 		
-		Bukkit.getScheduler().scheduleAsyncRepeatingTask(this, new LookUpdate(this), 5L, 5L);
+		Bukkit.getScheduler().scheduleSyncRepeatingTask(this, new LookUpdate(this), 5L, 5L);
 		this.pManager.addPacketListener(pListener = new ProtocolListener(this));
 
 		for (World world : Bukkit.getWorlds()) {
@@ -281,6 +283,8 @@ public class FakeMobsPlugin extends JavaPlugin {
 			if (section.isSet("Name") && section.getString("Name").length() <= 16)
 				mob.setCustomName(section.getString("Name"));
 			mob.setSitting(section.getBoolean("Sitting"));
+			mob.setGliding(section.getBoolean("Gliding"));
+			mob.showLayer(section.getBoolean("Layer", true));
 			if (section.contains("Invisibility"))
 				mob.setInvisibility(section.getBoolean("Invisibility"));
 			mob.setPlayerLook(section.getBoolean("PlayerLook"));
@@ -290,6 +294,8 @@ public class FakeMobsPlugin extends JavaPlugin {
 				ConfigurationSection invSection = section.getConfigurationSection("Inventory");
 				if (invSection.contains("ItemInHand"))
 					inv.setItemInHand(invSection.getItemStack("ItemInHand"));
+				if (invSection.contains("ItemOffHand"))
+					inv.setOffHand(invSection.getItemStack("ItemOffHand"));
 				if (invSection.contains("Boots"))
 					inv.setBoots(invSection.getItemStack("Boots"));
 				if (invSection.contains("Leggings"))
@@ -369,14 +375,18 @@ public class FakeMobsPlugin extends JavaPlugin {
 			section.set("Type", mob.getType().name());
 			if (mob.getCustomName() != null)
 				section.set("Name", mob.getCustomName());
+			section.set("Gliding", mob.isGliding());
 			section.set("Sitting", mob.isSitting());
 			section.set("Invisibility", mob.isInvisibility());
 			section.set("PlayerLook", mob.isPlayerLook());
+			section.set("Layer", mob.isLayering());
 			
 			if (!mob.getInventory().isEmpty()) {
 				ConfigurationSection invSection = section.createSection("Inventory");
 				if (mob.getInventory().getItemInHand() != null && mob.getInventory().getItemInHand().getType() != Material.AIR)
 					invSection.set("ItemInHand", mob.getInventory().getItemInHand());
+				if (mob.getInventory().getOffHand() != null && mob.getInventory().getOffHand().getType() != Material.AIR)
+					invSection.set("ItemOffHand", mob.getInventory().getOffHand());
 				if (mob.getInventory().getBoots() != null && mob.getInventory().getBoots().getType() != Material.AIR)
 					invSection.set("Boots", mob.getInventory().getBoots());
 				if (mob.getInventory().getLeggings() != null && mob.getInventory().getLeggings().getType() != Material.AIR)
@@ -431,7 +441,7 @@ public class FakeMobsPlugin extends JavaPlugin {
 
 	public void adjustEntityCount() {
 		try {
-			Class entityClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".Entity");
+			Class<?> entityClass = Class.forName(ReflectionUtils.getNMSPackageName() + ".Entity");
 
 			Field field = entityClass.getDeclaredField("entityCount");
 			field.setAccessible(true);

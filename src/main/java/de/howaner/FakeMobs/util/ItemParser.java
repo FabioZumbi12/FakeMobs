@@ -44,7 +44,7 @@ public class ItemParser {
 			}
 			
 			try {
-				Class MojangsonParserClass = Class.forName("net.minecraft.server." + getBukkitVersion() + ".MojangsonParser");
+				Class<?> MojangsonParserClass = Class.forName("net.minecraft.server." + getBukkitVersion() + ".MojangsonParser");
 				Method parseMethod = MojangsonParserClass.getDeclaredMethod("parse", String.class);
 				parseMethod.setAccessible(true);
 				Object NBTBase = parseMethod.invoke(null, builder.toString());
@@ -74,9 +74,9 @@ public class ItemParser {
 	
 	public static ItemStack addNBTToItemStack(ItemStack stack, Object nbt) {
 		try {
-			Class CraftItemStackClass = Class.forName("org.bukkit.craftbukkit." + getBukkitVersion() + ".inventory.CraftItemStack");
-			Class NMSItemStackClass = Class.forName("net.minecraft.server." + getBukkitVersion() + ".ItemStack");
-			Class NBTTagCompoundClass = Class.forName("net.minecraft.server." + getBukkitVersion() + ".NBTTagCompound");
+			Class<?> CraftItemStackClass = Class.forName("org.bukkit.craftbukkit." + getBukkitVersion() + ".inventory.CraftItemStack");
+			Class<?> NMSItemStackClass = Class.forName("net.minecraft.server." + getBukkitVersion() + ".ItemStack");
+			Class<?> NBTTagCompoundClass = Class.forName("net.minecraft.server." + getBukkitVersion() + ".NBTTagCompound");
 			
 			Method asNMSCopy = CraftItemStackClass.getDeclaredMethod("asNMSCopy", ItemStack.class);
 			asNMSCopy.setAccessible(true);

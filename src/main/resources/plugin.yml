@@ -1,5 +1,5 @@
 name: FakeMobs
-version: ${project.version}
+version: 1.9.4
 author: Howaner
 description: A simple npc plugin
 depend: [ProtocolLib]
@@ -10,6 +10,9 @@ commands:
     description: FakeMobs Manage
     usage: "§4Bad Syntax. Type /FakeMob help for Help!"
 permissions:
+  FakeMobs.reload:
+    description: Reload the plugin
+    default: op
   FakeMobs.create:
     description: Spawn Fake Mobs
     default: op
@@ -21,6 +24,12 @@ permissions:
     default: op
   FakeMobs.sitting:
     description: Can sit the Fake Mob
+    default: op
+  FakeMobs.gliding:
+    description: Make a fake player to gliding
+    default: op
+  FakeMobs.layer:
+    description: Show/Hide second skin layer
     default: op
   FakeMobs.invisibility:
     description: Can make a Fake Mob Invisibility

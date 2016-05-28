@@ -8,8 +8,11 @@ import de.howaner.FakeMobs.util.Cache;
 import de.howaner.FakeMobs.util.FakeMob;
 import de.howaner.FakeMobs.util.ItemParser;
 import de.howaner.FakeMobs.util.MobShop;
+
 import java.util.ArrayList;
 import java.util.List;
+
+import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.Location;
 import org.bukkit.command.Command;
@@ -29,12 +32,30 @@ public class FakeMobCommand implements CommandExecutor {
 	@Override
 	public boolean onCommand(CommandSender sender, Command cmd, String cmdLabel, String[] args) {
 		if (!(sender instanceof Player)) {
-			sender.sendMessage(ChatColor.RED + "You are not a Player!");
+			if (args[0].equalsIgnoreCase("reload")) {
+				plugin.loadMobsFile();
+				for (Player players : Bukkit.getOnlinePlayers())
+					plugin.updatePlayerView(players);
+				sender.sendMessage(ChatColor.GREEN + "FakeMobs file Reloaded!");
+				return true;
+			}
+			sender.sendMessage(ChatColor.RED + "You can use only /fakemob reload from console!");
 			return true;
 		}
 		Player player = (Player) sender;
 		if (args.length == 0) return false;
-		if (args[0].equalsIgnoreCase("create")) {
+		
+		if (args[0].equalsIgnoreCase("reload")) {
+			if (!player.hasPermission("FakeMobs.reload")) {
+				player.sendMessage(ChatColor.RED + "No permission!");
+				return true;
+			}
+			plugin.loadMobsFile();
+			for (Player players : Bukkit.getOnlinePlayers())
+				plugin.updatePlayerView(players);
+			player.sendMessage(ChatColor.GREEN + "FakeMobs file Reloaded!");
+			return true;
+		} else if (args[0].equalsIgnoreCase("create")) {
 			if (args.length != 2) return false;
 			if (!player.hasPermission("FakeMobs.create")) {
 				player.sendMessage(ChatColor.RED + "No permission!");
@@ -54,7 +75,7 @@ public class FakeMobCommand implements CommandExecutor {
 				boolean komma = false;
 				for (int i = 0; i < EntityType.values().length; i++) {
 					EntityType t = EntityType.values()[i];
-					if (t == null || !t.isAlive() || t.getName() == null) continue;
+					if (t == null || !t.isAlive() || t.name() == null) continue;
 					if (komma) entityBuilder.append(", ");
 					entityBuilder.append(t.name());
 					komma = true;
@@ -157,6 +178,46 @@ public class FakeMobCommand implements CommandExecutor {
 			this.plugin.saveMobsFile();
 			player.sendMessage(ChatColor.GREEN + "Sitting Status changed: " + ChatColor.GRAY + ((mob.isSitting()) ? "on" : "off"));
 			return true;
+		} else if (args[0].equalsIgnoreCase("gliding")) {
+			if (args.length < 1) return false;
+			if (!player.hasPermission("FakeMobs.gliding")) {
+				player.sendMessage(ChatColor.RED + "No permission!");
+				return true;
+			}
+			FakeMob mob = Cache.selectedMobs.get(player);
+			if (mob == null) {
+				player.sendMessage(ChatColor.RED + "You haven't a Selection!");
+				return true;
+			}
+			if (mob.getType() != EntityType.PLAYER) {
+				player.sendMessage(ChatColor.RED + "Only players can glide!");
+				return true;
+			}
+			mob.setGliding(!mob.isGliding());
+			mob.updateMetadata();
+			this.plugin.saveMobsFile();
+			player.sendMessage(ChatColor.GREEN + "Gliding Status changed: " + ChatColor.GRAY + ((mob.isGliding()) ? "on" : "off"));
+			return true;
+		} else if (args[0].equalsIgnoreCase("layer")) {
+			if (args.length < 1) return false;
+			if (!player.hasPermission("FakeMobs.layer")) {
+				player.sendMessage(ChatColor.RED + "No permission!");
+				return true;
+			}
+			FakeMob mob = Cache.selectedMobs.get(player);
+			if (mob == null) {
+				player.sendMessage(ChatColor.RED + "You haven't a Selection!");
+				return true;
+			}
+			if (mob.getType() != EntityType.PLAYER) {
+				player.sendMessage(ChatColor.RED + "Only players can have skin layers!");
+				return true;
+			}
+			mob.showLayer(!mob.isLayering());
+			mob.updateMetadata();
+			this.plugin.saveMobsFile();
+			player.sendMessage(ChatColor.GREEN + "Layer Status changed: " + ChatColor.GRAY + ((mob.isLayering()) ? "on" : "off"));
+			return true;
 		} else if (args[0].equalsIgnoreCase("invisibility")) {
 			if (args.length < 1) return false;
 			if (!player.hasPermission("FakeMobs.invisibility")) {
@@ -187,6 +248,9 @@ public class FakeMobCommand implements CommandExecutor {
 			mob.setPlayerLook(!mob.isPlayerLook());
 			if (mob.isPlayerLook())
 				mob.sendLookPacket(player, player.getLocation());
+			else
+				mob.getLocation().setYaw((float)mob.getLookYaw(player.getLocation()));
+			mob.sendLookPacket(player, player.getLocation());
 			this.plugin.saveMobsFile();
 			player.sendMessage(ChatColor.GREEN + "Player Look: " + ChatColor.GRAY + ((mob.isPlayerLook()) ? "on" : "off"));
 			return true;
@@ -226,7 +290,7 @@ public class FakeMobCommand implements CommandExecutor {
 			player.sendMessage(ChatColor.GREEN + "Skin set!");
 			return true;
 		} else if (args[0].equalsIgnoreCase("inv")) {
-			if (args.length < 3) return false;
+			if (args.length < 3) return false;			
 			if (!player.hasPermission("FakeMobs.inv")) {
 				player.sendMessage(ChatColor.RED + "No permission!");
 				return true;
@@ -234,6 +298,19 @@ public class FakeMobCommand implements CommandExecutor {
 			FakeMob mob = Cache.selectedMobs.get(player);
 			if (mob == null) {
 				player.sendMessage(ChatColor.RED + "You haven't a Selection!");
+				return true;
+			}
+			
+			//fakemob inv hand interact
+			if (args[2].equalsIgnoreCase("interact") && 
+					(args[1].equalsIgnoreCase("hand") ||
+							args[1].equalsIgnoreCase("offhand") ||
+							args[1].equalsIgnoreCase("boots") ||
+							args[1].equalsIgnoreCase("leggings") ||
+							args[1].equalsIgnoreCase("chestplate") ||
+							args[1].equalsIgnoreCase("helmet"))){
+				plugin.interactCache.put(player,args[1]);
+				player.sendMessage(ChatColor.GREEN + "Now right click with an item hand to send to "+args[1]);
 				return true;
 			}
 			
@@ -249,9 +326,13 @@ public class FakeMobCommand implements CommandExecutor {
 				return true;
 			}
 			
+			//fakemob inv hand item
 			if (args[1].equalsIgnoreCase("hand")) {
 				mob.getInventory().setItemInHand(item);
 				player.sendMessage(ChatColor.GOLD + "Setted Item in Hand to " + item.getType().name() + "!");
+			} else if (args[1].equalsIgnoreCase("offhand")) {
+				mob.getInventory().setOffHand(item);
+				player.sendMessage(ChatColor.GOLD + "Setted Off Hand to " + item.getType().name() + "!");
 			} else if (args[1].equalsIgnoreCase("boots")) {
 				mob.getInventory().setBoots(item);
 				player.sendMessage(ChatColor.GOLD + "Setted Boots to " + item.getType().name() + "!");
@@ -545,8 +626,10 @@ public class FakeMobCommand implements CommandExecutor {
 			player.sendMessage(ChatColor.GRAY + "/FakeMob sitting " + ChatColor.RED + "-- " + ChatColor.WHITE + "Change the Sitting state of a pet and players (Wolf/Ocelot/Player)");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob invisibility " + ChatColor.RED + "-- " + ChatColor.WHITE + "Make the fakemob invisibility");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob look " + ChatColor.RED + "-- " + ChatColor.WHITE + "Enable/Disable the Players Look");
+			player.sendMessage(ChatColor.GRAY + "/FakeMob gliding " + ChatColor.RED + "-- " + ChatColor.WHITE + "Change to Gliding");
+			player.sendMessage(ChatColor.GRAY + "/FakeMob layer " + ChatColor.RED + "-- " + ChatColor.WHITE + "Change to second layer skin");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob teleport " + ChatColor.RED + "-- " + ChatColor.WHITE + "Teleport a Fakemob to you");
-			player.sendMessage(ChatColor.GRAY + "/FakeMob inv <hand/boots/leggings/chestplate/helmet> <Item> " + ChatColor.RED + "-- " + ChatColor.WHITE + "Set the Inventory of a Fakemob. Use none to delete.");
+			player.sendMessage(ChatColor.GRAY + "/FakeMob inv <hand/offhand/boots/leggings/chestplate/helmet> <interact/Item> " + ChatColor.RED + "-- " + ChatColor.WHITE + "Set the Inventory of a Fakemob. Use none to delete.");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob shop enable " + ChatColor.RED + "-- " + ChatColor.WHITE + "Enable the Shop");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob shop disable " + ChatColor.RED + "-- " + ChatColor.WHITE + "Disable the Shop");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob shop addItem <Item 1>;[Item 2];<Output> " + ChatColor.RED + "-- " + ChatColor.WHITE + "Add a Item to the Shop");

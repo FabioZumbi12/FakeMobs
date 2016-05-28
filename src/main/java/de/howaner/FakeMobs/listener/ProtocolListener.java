@@ -8,13 +8,17 @@ import com.comphenix.protocol.events.PacketContainer;
 import com.comphenix.protocol.events.PacketEvent;
 import com.comphenix.protocol.events.PacketListener;
 import com.comphenix.protocol.injector.GamePhase;
+
 import de.howaner.FakeMobs.FakeMobsPlugin;
 import de.howaner.FakeMobs.event.PlayerInteractFakeMobEvent;
 import de.howaner.FakeMobs.event.PlayerInteractFakeMobEvent.Action;
 import de.howaner.FakeMobs.util.FakeMob;
+
 import java.lang.reflect.Field;
+
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
 import org.bukkit.plugin.Plugin;
 
 public class ProtocolListener implements PacketListener {
@@ -31,6 +35,10 @@ public class ProtocolListener implements PacketListener {
 	public void onPacketReceiving(PacketEvent pe) {
 		PacketContainer packet = pe.getPacket();
 		final Player player = pe.getPlayer();
+		ItemStack hand = player.getInventory().getItemInMainHand();
+		if (hand == null)
+			hand = player.getInventory().getItemInOffHand();		
+		final ItemStack fhand = hand;
 		
 		if (packet.getType() == PacketType.Play.Client.USE_ENTITY) {
 			int id = packet.getIntegers().read(0) - 2300;
@@ -67,7 +75,7 @@ public class ProtocolListener implements PacketListener {
 			Bukkit.getScheduler().runTask(this.plugin, new Runnable() {
 				@Override
 				public void run() {
-					PlayerInteractFakeMobEvent event = new PlayerInteractFakeMobEvent(player, mob, action);
+					PlayerInteractFakeMobEvent event = new PlayerInteractFakeMobEvent(player, mob, action, fhand);
 					Bukkit.getPluginManager().callEvent(event);
 				}
 			});
