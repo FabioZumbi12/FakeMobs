@@ -234,6 +234,26 @@ public class FakeMobCommand implements CommandExecutor {
 			this.plugin.saveMobsFile();
 			player.sendMessage(ChatColor.GREEN + "Invisibility Status changed: " + ChatColor.GRAY + ((mob.isInvisibility()) ? "on" : "off"));
 			return true;
+		} else if (args[0].equalsIgnoreCase("vary")) {
+			if (args.length < 1) return false;
+			if (!player.hasPermission("FakeMobs.vary")) {
+				player.sendMessage(ChatColor.RED + "No permission!");
+				return true;
+			}
+			FakeMob mob = Cache.selectedMobs.get(player);
+			if (mob == null) {
+				player.sendMessage(ChatColor.RED + "You haven't a Selection!");
+				return true;
+			}
+			
+			if (mob.changeVary(!mob.getVary()) == 0){
+				player.sendMessage(ChatColor.RED + "This mob has no variables to change!");
+				return true;
+			} 			
+			mob.updateMetadata();
+			this.plugin.saveMobsFile();
+			player.sendMessage(ChatColor.GREEN + "You changed the variable of mob to " + (mob.getVary() ? "true":"false"));
+			return true;
 		} else if (args[0].equalsIgnoreCase("look")) {
 			if (args.length < 1) return false;
 			if (!player.hasPermission("FakeMobs.look")) {
@@ -247,10 +267,12 @@ public class FakeMobCommand implements CommandExecutor {
 			}
 			mob.setPlayerLook(!mob.isPlayerLook());
 			if (mob.isPlayerLook())
-				mob.sendLookPacket(player, player.getLocation());
-			else
-				mob.getLocation().setYaw((float)mob.getLookYaw(player.getLocation()));
-			mob.sendLookPacket(player, player.getLocation());
+				mob.sendLookPacket(player);
+			else {
+				mob.getLocation().setYaw((float)mob.getLook(player.getEyeLocation())[0]);
+			    mob.getLocation().setPitch((float)mob.getLook(player.getEyeLocation())[1]);
+			}
+			mob.sendLookPacket(player);
 			this.plugin.saveMobsFile();
 			player.sendMessage(ChatColor.GREEN + "Player Look: " + ChatColor.GRAY + ((mob.isPlayerLook()) ? "on" : "off"));
 			return true;
@@ -628,6 +650,7 @@ public class FakeMobCommand implements CommandExecutor {
 			player.sendMessage(ChatColor.GRAY + "/FakeMob look " + ChatColor.RED + "-- " + ChatColor.WHITE + "Enable/Disable the Players Look");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob gliding " + ChatColor.RED + "-- " + ChatColor.WHITE + "Change to Gliding");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob layer " + ChatColor.RED + "-- " + ChatColor.WHITE + "Change to second layer skin");
+			player.sendMessage(ChatColor.GRAY + "/FakeMob vary " + ChatColor.RED + "-- " + ChatColor.WHITE + "Change variables of specific mobs");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob teleport " + ChatColor.RED + "-- " + ChatColor.WHITE + "Teleport a Fakemob to you");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob inv <hand/offhand/boots/leggings/chestplate/helmet> <interact/Item> " + ChatColor.RED + "-- " + ChatColor.WHITE + "Set the Inventory of a Fakemob. Use none to delete.");
 			player.sendMessage(ChatColor.GRAY + "/FakeMob shop enable " + ChatColor.RED + "-- " + ChatColor.WHITE + "Enable the Shop");

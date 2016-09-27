@@ -18,7 +18,7 @@ public class LookUpdate implements Runnable {
 				if (!mob.isPlayerLook()) continue;
 				List<Player> players = mob.getNearbyPlayers(5D);
 				for (Player p : players)
-					mob.sendLookPacket(p, p.getLocation());
+					mob.sendLookPacket(p);
 			}
 		} catch (Exception e) {
 			//Do Nothing

@@ -9,6 +9,8 @@ import com.comphenix.protocol.wrappers.WrappedDataWatcher.Registry;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher.Serializer;
 import com.comphenix.protocol.wrappers.WrappedDataWatcher.WrappedDataWatcherObject;
 
+import de.howaner.FakeMobs.FakeMobsPlugin;
+
 public class DataWatchCreator {
 
 	static Serializer serialString = Registry.get(String.class);
@@ -22,7 +24,10 @@ public class DataWatchCreator {
 	public static WrappedDataWatcher createDefaultWatcher(FakeMob mob) {		
 		WrappedDataWatcher watcher = new WrappedDataWatcher();
 		watcher = addEntityDefaults(watcher, mob.getType());
-
+		int dif = 0;
+		if (FakeMobsPlugin.getPlugin().version >= 1100){
+			dif++;
+		}
 		//Custom Name:
 		if (mob.getCustomName() != null && !mob.getCustomName().isEmpty()) {
 			watcher.setObject(new WrappedDataWatcherObject(3, serialBool), true);
@@ -34,14 +39,14 @@ public class DataWatchCreator {
 			if (mob.getType() == EntityType.PLAYER) {
 				watcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0x02);
 			} else {
-				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x01);
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0x01);
 			}
 		}
 				
 		if (mob.getType() == EntityType.PLAYER){
 			//isLayering
 			if (mob.isLayering()){
-				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x7F); //Skin flag
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0x7F); //Skin flag
 			} 
 			
 			//isGliding:
@@ -55,13 +60,17 @@ public class DataWatchCreator {
 	}
 
 	public static WrappedDataWatcher addEntityDefaults(WrappedDataWatcher watcher, EntityType type) {
-		// Add EntityLiving defaults:
+		// Add EntityLiving defaults:		
+		int dif = 0;
+		if (FakeMobsPlugin.getPlugin().version >= 1100){
+			dif++;
+		} 
 		watcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0); //Entity options (like invisibility)
-		watcher.setObject(new WrappedDataWatcherObject(7, serialInt), 0); //Potion effect color
-		watcher.setObject(new WrappedDataWatcherObject(8, serialBool), false); //Is potion effect active?
-		watcher.setObject(new WrappedDataWatcherObject(9, serialInt), 0); //Number of Arrows
-		watcher.setObject(new WrappedDataWatcherObject(6, serialFloat), (float) 1.0f); //Health
-
+		watcher.setObject(new WrappedDataWatcherObject(6+dif, serialFloat), (float) 1.0f); //Health
+		watcher.setObject(new WrappedDataWatcherObject(7+dif, serialInt), 0); //Potion effect color
+		watcher.setObject(new WrappedDataWatcherObject(8+dif, serialBool), false); //Is potion effect active?
+		watcher.setObject(new WrappedDataWatcherObject(9+dif, serialInt), 0); //Number of Arrows
+		
 		// Add EntityInsentient defaults:
 		if (type != EntityType.PLAYER) {
 			watcher.setObject(new WrappedDataWatcherObject(3, serialBool), false); //Custom Name Visible (Minecraft 1.9)
@@ -70,92 +79,98 @@ public class DataWatchCreator {
 
 		switch (type) {
 			case BAT:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //Is Hanging?
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialByte), (byte) 0); //Is Hanging?
 				break;
 			case BLAZE:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //On fire
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialByte), (byte) 0); //On fire
 				break;
 			case SPIDER:
 			case CAVE_SPIDER:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //In climbing?
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialByte), (byte) 0); //In climbing?
 				break;
 			case CHICKEN:
 				break;
 			case CREEPER:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), -1); //1 = Fuse, -1 = idle
-				watcher.setObject(new WrappedDataWatcherObject(12, serialBool), false); //Is Powered
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialInt), -1); //1 = Fuse, -1 = idle
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), false); //Is Powered
 				break;
 			case MUSHROOM_COW:
 			case COW:
 				break;
 			case ENDERMAN:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0); //Carried Block Data
-				watcher.setObject(new WrappedDataWatcherObject(12, serialBool), false); //Is screaming?
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialInt), 0); //Carried Block Data
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), false); //Is screaming?
 				break;
 			case ENDER_DRAGON:
 				break;
 			case GHAST:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialBool), false); //Is attacking?
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialBool), false); //Is attacking?
 				break;
 			case GIANT:
 				break;
 			case HORSE:
-				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0);
-				watcher.setObject(new WrappedDataWatcherObject(13, serialInt), 0); //Type: Horse
-				watcher.setObject(new WrappedDataWatcherObject(14, serialInt), 0); //Color: White
-				watcher.setObject(new WrappedDataWatcherObject(15, serialUUID), null); //Owner UUID
-				watcher.setObject(new WrappedDataWatcherObject(19, serialInt), 0); //No Armor
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0);
+				watcher.setObject(new WrappedDataWatcherObject(13+dif, serialInt), 0); //Type: Horse
+				watcher.setObject(new WrappedDataWatcherObject(14+dif, serialInt), 0); //Color: White
+				watcher.setObject(new WrappedDataWatcherObject(15+dif, serialUUID), null); //Owner UUID
+				if (dif==1)
+					watcher.setObject(new WrappedDataWatcherObject(17, serialInt), 0); //No Armor
+				else 
+					watcher.setObject(new WrappedDataWatcherObject(19, serialInt), 0); //No Armor
 				break;
 			case IRON_GOLEM:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialByte), (byte) 0); //Is the iron golem from a player created?
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialByte), (byte) 0); //Is the iron golem from a player created?
 				break;
 			case SLIME:
 			case MAGMA_CUBE:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialInt),  1); //Slime size 1
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialInt),  1); //Slime size 1
 				break;
 			case OCELOT:
-				watcher.setObject(new WrappedDataWatcherObject(14, serialInt), 0); //Ocelot Type
+				watcher.setObject(new WrappedDataWatcherObject(14+dif, serialInt), 0); //Ocelot Type
 				break;
 			case PIG:
-				watcher.setObject(new WrappedDataWatcherObject(12, serialBool), false); //Has saddle ?
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), false); //Has saddle ?
 				break;
 			case PIG_ZOMBIE:
 			case ZOMBIE:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialBool), false); //Is baby?
-				watcher.setObject(new WrappedDataWatcherObject(12, serialInt), 0); //Is villager?
-				watcher.setObject(new WrappedDataWatcherObject(13, serialBool), false); //Is converting?
-				watcher.setObject(new WrappedDataWatcherObject(14, serialBool), false); //Is hands up?
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialBool), false); //Is baby?
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialInt), 0); //Is villager?
+				watcher.setObject(new WrappedDataWatcherObject(13+dif, serialBool), false); //Is converting?
+				watcher.setObject(new WrappedDataWatcherObject(14+dif, serialBool), false); //Is hands up?
 				break;
 			case PLAYER:				
-				watcher.setObject(new WrappedDataWatcherObject(10, serialFloat), 0.0f); //Absorption hearts
-				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0); //Score
+				watcher.setObject(new WrappedDataWatcherObject(10+dif, serialFloat), 0.0f); //Absorption hearts
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialInt), 0); //Score
 				break;
 			case SHEEP:
-				watcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0); //Color
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0); //Color
 				break;
 			case SILVERFISH:
 				break;
 			case SKELETON:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0); //Type. 0 = Normal, 1 = Wither
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialInt), 0); //Type. 0 = Normal, 1 = Wither
 				break;
 			case SNOWMAN:
 				break;
 			case VILLAGER:
-				watcher.setObject(new WrappedDataWatcherObject(12, serialInt), 1); //Type
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialInt), 1); //Type
 				break;
 			case WITCH:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialBool), false); //Is agressive?
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialBool), false); //Is agressive?
 				break;
 			case WITHER:
-				watcher.setObject(new WrappedDataWatcherObject(11, serialInt), 0);
-				watcher.setObject(new WrappedDataWatcherObject(12, serialInt), 0);
-				watcher.setObject(new WrappedDataWatcherObject(13, serialInt), 0);
-				watcher.setObject(new WrappedDataWatcherObject(14, serialInt), 0);
+				watcher.setObject(new WrappedDataWatcherObject(11+dif, serialInt), 0);
+				watcher.setObject(new WrappedDataWatcherObject(12+dif, serialInt), 0);
+				watcher.setObject(new WrappedDataWatcherObject(13+dif, serialInt), 0);
+				watcher.setObject(new WrappedDataWatcherObject(14+dif, serialInt), 0);
 				break;
 			case WOLF:
-				//watcher.setObject(new WrappedDataWatcherObject(14, serialFloat), 20.0f); //Damage taken
-				watcher.setObject(new WrappedDataWatcherObject(15, serialBool), false); //Begging
-				watcher.setObject(new WrappedDataWatcherObject(26, serialInt), 14); //Collar color
+				watcher.setObject(new WrappedDataWatcherObject(14+dif, serialFloat), 20.0f); //Damage taken
+				watcher.setObject(new WrappedDataWatcherObject(15+dif, serialBool), false); //Begging
+				if (dif==1)
+					watcher.setObject(new WrappedDataWatcherObject(17, serialInt), 14); //Collar color
+				else
+					watcher.setObject(new WrappedDataWatcherObject(26, serialInt), 14); //Collar color
 				break;
 		default:
 			break;

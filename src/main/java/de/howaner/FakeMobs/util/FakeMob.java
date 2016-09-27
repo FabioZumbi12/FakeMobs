@@ -12,6 +12,7 @@ import org.bukkit.Location;
 import org.bukkit.World;
 import org.bukkit.entity.EntityType;
 import org.bukkit.entity.Player;
+import org.bukkit.util.Vector;
 
 import com.comphenix.protocol.PacketType;
 import com.comphenix.protocol.events.PacketContainer;
@@ -45,10 +46,11 @@ public class FakeMob {
 	private MobInventory inventory = new MobInventory();
 	private MobShop shop = null;
 	private Multimap<String, WrappedSignedProperty> playerSkin;  // Only used if this.getType() == EntityType.PLAYER
-	private final List<InteractAction> interacts = new ArrayList<InteractAction>();	
+	private final List<InteractAction> interacts = new ArrayList<InteractAction>();
+	private boolean vary = false;
 	static Serializer serialString = Registry.get(String.class);
 	static Serializer serialByte = Registry.get(Byte.class);
-	static Serializer serialFloat = Registry.get(Float.class);
+	//static Serializer serialFloat = Registry.get(Float.class);
 	static Serializer serialBool = Registry.get(Boolean.class);
 	
 	public FakeMob(int id, Location loc, EntityType type) {
@@ -235,16 +237,21 @@ public class FakeMob {
 		if (this.sitting == sitting) return;
 		this.sitting = sitting;
 
+		int dif = 0;
+		if (FakeMobsPlugin.getPlugin().version >= 1100){
+			dif++;
+		}
 		if (this.getType() == EntityType.PLAYER) {
 			byte current = this.dataWatcher.getByte(0);
-			if (sitting)
+			if (sitting){
 				this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) (current | 1 << 1));
-			else
+			} else {
 				this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) (current & (1 << 1 ^ 0xFFFFFFFF)));
+			}
 		} else if (sitting) {
-			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x1);
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0x1);
 		} else {
-			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x0);
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0x0);
 		}
 	}
 	
@@ -253,10 +260,11 @@ public class FakeMob {
 		if (this.gliding == gliding) return;
 		this.gliding = gliding;		
 		
-		if (gliding)
+		if (gliding){
 			this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0x80);
-		else
+		} else {
 			this.dataWatcher.setObject(new WrappedDataWatcherObject(0, serialByte), (byte) 0);
+		}
 	}
 
 	public void setInvisibility(boolean invisibility) {
@@ -276,7 +284,7 @@ public class FakeMob {
 
 		if (!look) {
 			for (Player player : this.loadedPlayers)
-				this.sendLookPacket(player, this.getLocation().getYaw());
+				this.sendLookPacket(player, this.loc.getYaw(), this.loc.getPitch());
 		}
 
 		this.playerLook = look;
@@ -405,7 +413,7 @@ public class FakeMob {
 			return;
 		}
 
-		this.sendLookPacket(player, this.loc.getYaw());
+		this.sendLookPacket(player, this.loc.getYaw(), this.loc.getPitch());
 		this.sendInventoryPacket(player);
 	}
 	
@@ -440,10 +448,16 @@ public class FakeMob {
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_METADATA);
 
 		packet.getIntegers().write(0, this.getEntityId());
-		if (this.isLayering())
-			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0x7F);
-		else 
-			this.dataWatcher.setObject(new WrappedDataWatcherObject(12, serialByte), (byte) 0);
+		int dif = 0;
+		if (FakeMobsPlugin.getPlugin().version >= 1100){
+			dif++;
+		}
+		if (this.type.equals(EntityType.PLAYER)){
+			if (this.isLayering())
+				this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0x7F);
+			else 
+				this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialByte), (byte) 0);
+		}		
 		packet.getWatchableCollectionModifier().write(0, this.dataWatcher.getWatchableObjects());
 
 		try {
@@ -467,30 +481,27 @@ public class FakeMob {
 		}
 	}
 	
-	public void sendLookPacket(Player player, Location point) {				
-		this.sendLookPacket(player, getLookYaw(point));
+	public void sendLookPacket(Player player) {				
+		this.sendLookPacket(player, getLook(player.getLocation())[0], getLook(player.getLocation())[1]);
 	}
 	
-	public double getLookYaw(Location point){
-		double xDiff = point.getX() - this.loc.getX();
-		//double yDiff = point.getY() - this.loc.getY();
-		double zDiff = point.getZ() - this.loc.getZ();
-		double DistanceXZ = Math.sqrt(xDiff * xDiff + zDiff * zDiff);
-		//double DistanceY = Math.sqrt(DistanceXZ * DistanceXZ + yDiff * yDiff);
-		double newYaw = Math.acos(xDiff / DistanceXZ) * 180.0D / 3.141592653589793D;
-		//double newPitch = Math.acos(yDiff / DistanceY) * 180.0D / 3.141592653589793D - 90.0D;
-		if (zDiff < 0.0D){
-			newYaw += Math.abs(180.0D - newYaw) * 2.0D;			
-		}			
-		double yaw = ((float)newYaw - 98.0D);
-		return yaw;
+	public float[] getLook(Location point){
+		Vector direction = this.loc.toVector().subtract(point.toVector()).normalize();
+	    double x = direction.getX();
+	    double y = direction.getY();
+	    double z = direction.getZ();
+		return new float[]{180 - toDegree(Math.atan2(x, z)),90 - toDegree(Math.acos(y))};
 	}
 	
-	public void sendLookPacket(Player player, double yaw) {
-		sendBodyLookPacket(player, yaw);//Rotate body
+	private float toDegree(double angle) {
+	    return (float) Math.toDegrees(angle);
+	}
+	
+	public void sendLookPacket(Player player, float yaw, float pitch) {
+		sendBodyLookPacket(player, yaw, pitch);//Rotate body
 		
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_HEAD_ROTATION);
-
+		
 		packet.getIntegers().write(0, this.getEntityId());
 		packet.getBytes().write(0, (byte)(int)(yaw * 256.0F / 360.0F));
 		
@@ -502,11 +513,12 @@ public class FakeMob {
 		}
 	}
 	
-	private void sendBodyLookPacket(Player player, double yaw) {
+	private void sendBodyLookPacket(Player player, float yaw, float pitch) {
 		PacketContainer packet = FakeMobsPlugin.getPlugin().getProtocolManager().createPacket(PacketType.Play.Server.ENTITY_LOOK);
 
 		packet.getIntegers().write(0, this.getEntityId());
 		packet.getBytes().write(0, (byte)(int)(yaw * 256.0F / 360.0F));
+		packet.getBytes().write(1, (byte)(int)(pitch * 256.0F / 360.0F));
 		
 		try {
 			FakeMobsPlugin.getPlugin().getProtocolManager().sendServerPacket(player, packet);
@@ -564,5 +576,41 @@ public class FakeMob {
 			}
 		}
 	}
-			
+	
+	public boolean getVary(){
+		return this.vary;
+	}
+	
+	public int changeVary(boolean vary) {
+		int dif = 0;
+		if (FakeMobsPlugin.getPlugin().version >= 1100){
+			dif++;
+		}
+		this.vary = vary;
+		switch (this.type) {
+		case CREEPER:
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), vary);
+			return 12+dif;
+		case PIG:
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), vary);
+			return 12+dif;	
+		case POLAR_BEAR:
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), vary);
+			return 12+dif;	
+		case SKELETON:
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), vary);
+			return 12+dif;	
+		case ZOMBIE:
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(14+dif, serialBool), vary);
+			return 14+dif;	
+		case ENDERMAN:
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(12+dif, serialBool), vary);
+			return 12+dif;	
+		case WOLF:			
+			this.dataWatcher.setObject(new WrappedDataWatcherObject(15+dif, serialBool), vary);
+			return 15+dif;	
+		default:
+			return 0;	
+		}
+	}			
 }

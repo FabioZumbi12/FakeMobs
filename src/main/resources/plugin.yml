@@ -1,5 +1,5 @@
 name: FakeMobs
-version: 1.9.4
+version: 1.10.0
 author: Howaner
 description: A simple npc plugin
 depend: [ProtocolLib]
@@ -34,6 +34,9 @@ permissions:
   FakeMobs.invisibility:
     description: Can make a Fake Mob Invisibility
     default: op
+  FakeMobs.vary:
+    description: Change mob variables
+    default: op
   FakeMobs.look:
     description: Can change the look Function of a Mob
     default: op
@@ -64,6 +67,7 @@ permissions:
       FakeMobs.select: true
       FakeMobs.name: true
       FakeMobs.sitting: true
+      FakeMobs.vary: true
       FakeMobs.invisibility: true
       FakeMobs.look: true
       FakeMobs.teleport: true

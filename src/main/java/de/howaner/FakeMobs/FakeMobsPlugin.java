@@ -6,6 +6,7 @@ import com.comphenix.protocol.wrappers.WrappedGameProfile;
 import com.comphenix.protocol.wrappers.WrappedSignedProperty;
 import com.google.common.collect.ArrayListMultimap;
 import com.google.common.collect.Multimap;
+
 import de.howaner.FakeMobs.adjuster.MyWorldAccess;
 import de.howaner.FakeMobs.command.FakeMobCommand;
 import de.howaner.FakeMobs.event.RemoveFakeMobEvent;
@@ -24,6 +25,7 @@ import de.howaner.FakeMobs.util.LookUpdate;
 import de.howaner.FakeMobs.util.MobInventory;
 import de.howaner.FakeMobs.util.MobShop;
 import de.howaner.FakeMobs.util.SkinQueue;
+
 import java.io.File;
 import java.lang.reflect.Field;
 import java.util.ArrayList;
@@ -33,6 +35,7 @@ import java.util.Map;
 import java.util.Map.Entry;
 import java.util.logging.Level;
 import java.util.logging.Logger;
+
 import org.bukkit.Bukkit;
 import org.bukkit.Chunk;
 import org.bukkit.Location;
@@ -51,12 +54,14 @@ public class FakeMobsPlugin extends JavaPlugin {
 	private final Map<Integer, FakeMob> mobs = new HashMap<Integer, FakeMob>();
 	private ProtocolListener pListener;
 	private SkinQueue skinQueue;
+	public int version;
 	public Map<Player,String> interactCache = new HashMap<Player,String>();
 	
 	@Override
 	public void onEnable() {
-		instance = this;
+		instance = this;		
 		log = this.getLogger();
+		version = getBukkitVersion();
 		this.pManager = ProtocolLibrary.getProtocolManager();
 		this.loadMobsFile();
 
@@ -83,6 +88,19 @@ public class FakeMobsPlugin extends JavaPlugin {
 		
 		log.info("Plugin enabled!");
 	}
+	
+	private int getBukkitVersion(){
+    	String name = Bukkit.getServer().getClass().getPackage().getName();
+		String v = name.substring(name.lastIndexOf('.') + 1) + ".";
+    	String[] version = v.replace('_', '.').split("\\.");
+		
+		int lesserVersion = 0;
+		try {
+			lesserVersion = Integer.parseInt(version[2]);
+		} catch (NumberFormatException ex){				
+		}
+		return Integer.parseInt((version[0]+version[1]).substring(1)+lesserVersion);
+    }
 	
 	@Override
 	public void onDisable() {
@@ -288,7 +306,7 @@ public class FakeMobsPlugin extends JavaPlugin {
 			if (section.contains("Invisibility"))
 				mob.setInvisibility(section.getBoolean("Invisibility"));
 			mob.setPlayerLook(section.getBoolean("PlayerLook"));
-			
+			mob.changeVary(section.getBoolean("Variable"));
 			if (section.contains("Inventory")) {
 				MobInventory inv = new MobInventory();
 				ConfigurationSection invSection = section.getConfigurationSection("Inventory");
@@ -380,6 +398,7 @@ public class FakeMobsPlugin extends JavaPlugin {
 			section.set("Invisibility", mob.isInvisibility());
 			section.set("PlayerLook", mob.isPlayerLook());
 			section.set("Layer", mob.isLayering());
+			section.set("Variable", mob.getVary());
 			
 			if (!mob.getInventory().isEmpty()) {
 				ConfigurationSection invSection = section.createSection("Inventory");
